@@ -32,6 +32,36 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script>
+function slugify(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\- ]/g, '')
+    .trim()
+    .replace(/ /g, '-');
+}
+
+function addHeadingIds(root) {
+  var counts = {};
+  var headings = root.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  headings.forEach(function (h) {
+    var slug = slugify(h.textContent);
+    if (counts[slug] === undefined) {
+      counts[slug] = 0;
+    } else {
+      counts[slug]++;
+      slug = slug + '-' + counts[slug];
+    }
+    h.id = slug;
+  });
+}
+
+function scrollToHash() {
+  if (!location.hash) return;
+  var id = decodeURIComponent(location.hash.slice(1));
+  var el = document.getElementById(id);
+  if (el) el.scrollIntoView();
+}
+
 (function () {
   fetch('readme.md')
     .then(function (res) {
@@ -43,6 +73,15 @@
       contentEl.innerHTML = marked.parse(markdown);
       document.getElementById('loading').style.display = 'none';
       contentEl.style.display = 'block';
+
+      // marked v12 no longer adds ids to headings by default,
+      // so in-page anchor links (e.g. #grammar) had nothing to jump to.
+      addHeadingIds(contentEl);
+      scrollToHash();
+
+      // Handle clicks on in-page anchor links after the initial load too
+      // (covers cases where the browser tried to scroll before content existed).
+      window.addEventListener('hashchange', scrollToHash);
     })
     .catch(function (err) {
       document.getElementById('loading').textContent =
